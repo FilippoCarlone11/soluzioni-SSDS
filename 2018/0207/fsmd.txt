@@ -1,0 +1,90 @@
+LIBRARY IEEE;
+USE IEEE.STD_LOGIC_1164.ALL;
+USE IEEE.NUMERIC_STD.ALL;
+
+ENTITY hlsm IS 
+PORT (	clk, rst, start : IN std_logic;
+	n : IN std_logic_vector(2 DOWNTO 0);
+	ready : OUT std_logic;
+	data_out: OUT std_logic_vector(12 DOWNTO 0));
+END hlsm;
+
+ARCHITECTURE behav OF hlsm IS
+	TYPE stateType IS (idle, compute, solve);
+	SIGNAL currentState, nextState : stateType;
+	SIGNAL cnt, nextCnt : std_logic_vector( 3 DOWNTO 0);
+	SIGNAL fact, nextFact : std_logic_vector(12 DOWNTO 0);
+	SIGNAL clear, enable_mul, mul_aval : std_logic;
+BEGIN
+
+	seqContr: PROCESS(clk, rst) BEGIN
+		IF(rst = '1') THEN
+			currentState <= idle;
+		ELSIF(rising_edge(clk)) THEN
+			currentState <= nextState;
+		END IF;
+	END PROCESS;
+
+	combContr: PROCESS(currentState, start, mul_aval) BEGIN
+		nextState <= currentState;
+		clear <= '0';
+		enable_mul <= '0';
+		ready <= '0';
+
+		CASE currentState IS
+			WHEN idle =>
+				clear <= '1';
+				IF(start = '1') THEN
+					nextState <= compute;
+				ELSE
+					nextState <= idle;
+				END IF;
+			WHEN compute =>
+				enable_mul <= '1';
+				IF(mul_aval = '1') THEN
+					nextState <= solve;
+				ELSE
+					nextState <= compute;
+				END IF;
+			WHEN solve =>
+				ready <= '1';
+				nextState <= idle;
+		END CASE;
+	
+	END PROCESS;
+
+	data_out <= fact WHEN currentState = solve ELSE (OTHERS => '0');
+
+	seqDatapath: PROCESS(clk) BEGIN
+		IF(rising_edge(clk)) THEN
+			IF(clear = '1') THEN
+				cnt <= std_logic_vector(to_unsigned(1, 4));
+				fact <= std_logic_vector(to_unsigned(1, 13));
+			ELSE
+				cnt <= nextCnt;
+				fact <= nextFact;
+			END IF;
+		END IF;
+			
+	END PROCESS;
+
+	combDatapath: PROCESS(enable_mul, cnt, n, fact) BEGIN
+		mul_aval <= '0';
+		nextFact <= fact;
+		nextCnt <= cnt;
+
+		IF(enable_mul = '1') THEN
+			nextFact <= std_logic_vector(resize(unsigned(cnt) * unsigned(fact), 13));
+			nextCnt <= std_logic_vector(unsigned(cnt)+1);
+		END IF;
+		IF(unsigned(cnt) >= unsigned(n)) THEN
+			mul_aval <= '1';
+		ELSE
+			mul_aval <= '0';
+		END IF;
+		
+	END PROCESS;
+		
+		
+
+END behav;
