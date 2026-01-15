@@ -1,5 +1,6 @@
 LIBRARY IEEE;
 USE IEEE.STD_LOGIC_1164.ALL;
+USE IEEE.NUMERIC_STD.ALL;
 
 ENTITY hlsm IS
 PORT(	clk, rst, b, e, d: IN std_logic;
@@ -9,7 +10,7 @@ PORT(	clk, rst, b, e, d: IN std_logic;
 END hlsm;
 
 ARCHITECTURE behav OF hlsm IS
-TYPE stateType IS (idle, value, encrypt ,decrypt);
+TYPE stateType IS (idle, compute);
 SIGNAL currentState, nextState : stateType;
 SIGNAL offset, next_offset, enc, next_enc : std_logic_vector(15 DOWNTO 0);
  
@@ -27,40 +28,31 @@ seqProc: PROCESS(rst, clk) BEGIN
 	END IF;
 END PROCESS;
 
-combProc: PROCESS(currentState, b, e, d, i) BEGIN
+combProc: PROCESS(currentState, b, e, d, i, offset, enc) BEGIN
 	nextState <= currentState;
 	next_offset <= offset;
 	next_enc <= enc;
-	o <= (OTHERS => '0');
+
 	CASE currentState IS
 		WHEN idle =>
-			IF( b = '1') THEN
+			nextState <= compute;
+
+		WHEN compute =>
+			IF(b = '1') THEN
 				next_offset <= i;
-				nextState <= value;
-			ELSE
-				nextState <= idle;
+				nextState <= compute;
+			ELSIF(e = '1') THEN
+				next_enc <= std_logic_vector(resize(signed(i)+signed(offset), 16));
+				nextState <= compute;
+			ELSIF(d = '1') THEN
+				next_enc <= std_logic_vector(resize(signed(i)-signed(offset), 16));
+				nextState <= compute;
 			END IF;
-		WHEN value =>
-			IF(e = '1') THEN
-				next_enc <= std_logic_vector(resize(unsigned(i)+unsigned(offset), 16));
-				next_state <= encrypt;
-			ELSE
-				nextState <= value;
-			END IF;
-		WHEN encrypt =>
-			o <= enc;
-			IF(d = '1') THEN
-				nextState <= decrypt;
-				next_enc <= std_logic_vector(resize(unsigned(i)-unsigned(offset), 16));
-			ELSE
-				nextState <= encrypt;
-			END IF;
-		WHEN decrypt =>
-			o <= enc;
-			nextState <= idle;
 		WHEN OTHERS =>
 			nextState <= idle;
 	END CASE;
 END PROCESS;
+
+	o <= enc;
 
 END behav;
