@@ -1,0 +1,116 @@
+module fsm_mealy ( 
+    input x, 
+    input clk,
+    input rst,
+    output reg z
+);
+
+    parameter S_000 = 3'b000;
+    parameter S_001 = 3'b001;
+    parameter S_010 = 3'b010;
+    parameter S_011 = 3'b011;
+    parameter S_100 = 3'b100;
+    parameter S_101 = 3'b101;
+    parameter S_110 = 3'b110;
+    parameter S_111 = 3'b111;
+
+    reg [2:0] state, next_state;
+
+    always @(posedge clk or posedge rst) begin
+        if(rst)
+            state <= S_000;
+        else
+            state <= next_state;
+    end
+
+    always @(*) begin
+        next_state = state;
+        z = 1'b0;
+
+        case (state)
+            S_000: begin
+                if(x) begin        
+                    next_state = S_001;
+                    z = 1'b0;
+                end else begin   
+                    next_state = S_000;
+                    z = 1'b0;
+                end   
+            end
+
+            S_001: begin
+                if(x) begin
+                    next_state = S_011;
+                    z = 1'b0;
+                end else begin
+                    next_state = S_010;
+                    z = 1'b0;
+                end
+            end
+
+            S_010: begin
+                if(x) begin
+                    next_state = S_101;
+                    z = 1'b1;
+                end else begin
+                    next_state = S_100;
+                    z = 1'b1;
+                end
+            end
+
+            S_011: begin
+                if(x) begin
+                    next_state = S_111;
+                    z = 1'b1;
+                end else begin
+                    next_state = S_110;
+                    z = 1'b1;
+                end
+            end
+
+            S_100: begin
+                if(x) begin
+                    next_state = S_001;
+                    z = 1'b0;
+                end else begin
+                    next_state = S_000;
+                    z = 1'b0;
+                end
+            end
+
+            S_101: begin
+                if(x) begin
+                    next_state = S_011;
+                    z = 1'b0;
+                end else begin
+                    next_state = S_010;
+                    z = 1'b0;
+                end
+            end
+
+            S_110: begin
+                if(x) begin
+                    next_state = S_101;
+                    z = 1'b1;
+                end else begin
+                    next_state = S_100;
+                    z = 1'b1;
+                end
+            end
+
+            S_111: begin
+                if(x) begin
+                    next_state = S_111;
+                    z = 1'b1;
+                end else begin
+                    next_state = S_110;
+                    z = 1'b1;
+                end
+            end
+
+            default:
+                next_state = S_000;
+        endcase
+    end
+
+endmodule
